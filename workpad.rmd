@@ -1,0 +1,63 @@
+---
+title: "Types of change in Apache's sentry project"
+author: "Fabián Santander"
+date: "7/7/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(readr)
+library(dplyr)
+library(tidyverse)
+
+# Load information and create RDA
+if (file.exists("sentry_data.Rda")) {
+  load("./sentry_data.Rda")
+} else {
+  
+  sentry_data <- read_csv(quote = "'", file = "distill_results.csv")
+  save(sentry_data, file="sentry_data.Rda")
+}
+
+# Generate cochange dataframe if it doesn't exist and create RDA
+if (file.exists("cochanges.Rda")) {
+  load("./cochanges.Rda")
+} else {
+  
+  cochanges <- sentry_data[ , c('filename', 'commit_1', 'commit_2')] %>%
+  group_by(filename, commit_1, commit_2) %>%
+  filter(n()==1) %>%
+  group_by(commit_1, commit_2) %>%
+  filter(n()>1)
+
+  cochanges <- left_join(cochanges, cochanges, by=c('commit_1', 'commit_2'))
+  
+  cochanges <- cochanges[cochanges$filename.x != cochanges$filename.y,]
+  
+  cochanges <- cochanges %>% filter(!duplicated(str_c(pmin(filename.x, filename.y), pmax(filename.x, filename.y) )))
+  
+  save(cochanges, file="cochanges.Rda")
+}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## Sentry data
+
+This is a change analysis between files changed in commits of the project sentry by Apache. See <https://github.com/apache/sentry>.
+
+The data found looks like:
+
+```{r sentry data}
+head(sentry_data)
+```
+
+## Cochanges
+
+The cochanges dataset looks like:
+
+```{r cochanges}
+head(cochanges)
+```
+
