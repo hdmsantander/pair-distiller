@@ -1,5 +1,5 @@
 *.Rda
 *.csv
 *.html
-!docs/workpad.html
+!docs/*.html
 .Rhistory
