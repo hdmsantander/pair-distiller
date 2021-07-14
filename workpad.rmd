@@ -1,5 +1,5 @@
 ---
-title: "Types of change in Apache's sentry project"
+title: "Analysis of the types of change present in Apache's sentry codebase over time"
 author: "Fabián Santander"
 date: "7/7/2021"
 output: html_document
@@ -9,6 +9,9 @@ output: html_document
 library(readr)
 library(dplyr)
 library(tidyverse)
+library(kableExtra)
+library(ggplot2)
+library(viridis)
 
 # Load information and create RDA
 if (file.exists("sentry_data.Rda")) {
@@ -17,47 +20,291 @@ if (file.exists("sentry_data.Rda")) {
   
   sentry_data <- read_csv(quote = "'", file = "distill_results.csv")
   save(sentry_data, file="sentry_data.Rda")
+  
 }
 
-# Generate cochange dataframe if it doesn't exist and create RDA
-if (file.exists("cochanges.Rda")) {
-  load("./cochanges.Rda")
+# Generate cochanges_file_level dataframe if it doesn't exist and create RDA
+if (file.exists("cochanges_file_level.Rda")) {
+  load("./cochanges_file_level.Rda")
 } else {
   
-  cochanges <- sentry_data[ , c('filename', 'commit_1', 'commit_2')] %>%
+  cochanges_file_level <- sentry_data[ , c('filename', 'change', 'commit_1', 'commit_2')] %>%
   group_by(filename, commit_1, commit_2) %>%
   filter(n()==1) %>%
   group_by(commit_1, commit_2) %>%
   filter(n()>1)
 
-  cochanges <- left_join(cochanges, cochanges, by=c('commit_1', 'commit_2'))
+  cochanges_file_level <- left_join(cochanges_file_level, cochanges_file_level, by=c('commit_1', 'commit_2'))
   
-  cochanges <- cochanges[cochanges$filename.x != cochanges$filename.y,]
+  cochanges_file_level <- cochanges_file_level[cochanges_file_level$filename.x != cochanges_file_level$filename.y,]
   
-  cochanges <- cochanges %>% filter(!duplicated(str_c(pmin(filename.x, filename.y), pmax(filename.x, filename.y) )))
+  # cochanges <- cochanges %>% filter(!duplicated(str_c(pmin(filename.x, filename.y), pmax(filename.x, filename.y) )))
   
-  save(cochanges, file="cochanges.Rda")
+  cochanges_file_level <- cochanges_file_level[, c('filename.x', 'change.x', 'filename.y', 'change.y', 'commit_2')]
+  
+  cochanges_file_level <- cochanges_file_level %>% rename(commit = commit_2)
+  
+  save(cochanges_file_level, file="cochanges_file_level.Rda")
+  
 }
 
-knitr::opts_chunk$set(echo = TRUE)
+# Generate cochanges_method_level dataframe if it doesn't exist and create RDA
+if (file.exists("cochanges_method_level.Rda")) {
+  load("./cochanges_method_level.Rda")
+} else {
+  
+  cochanges_method_level <- sentry_data[ , c('level_name', 'change', 'change_level', 'commit_1', 'commit_2')] %>%
+  group_by(level_name, commit_1, commit_2) %>%
+  filter(n()==1) %>%
+  group_by(commit_1, commit_2) %>%
+  filter(n()>1)
+
+  cochanges_method_level <- left_join(cochanges_method_level, cochanges_method_level, by=c('commit_1', 'commit_2'))
+  
+  cochanges_method_level <- cochanges_method_level[cochanges_method_level$level_name.x != cochanges_method_level$level_name.y,]
+  
+  # cochanges <- cochanges %>% filter(!duplicated(str_c(pmin(filename.x, filename.y), pmax(filename.x, filename.y) )))
+  
+  cochanges_method_level <- cochanges_method_level[, c('level_name.x', 'change.x', 'change_level.x', 'level_name.y', 'change.y', 'change_level.y', 'commit_2')]
+  
+  cochanges_method_level <- cochanges_method_level %>% rename(commit = commit_2)
+  
+  save(cochanges_method_level, file="cochanges_method_level.Rda")
+  
+}
+
+# Global knitr options
+knitr::opts_chunk$set(
+  echo = FALSE,
+  fig.width = 6,
+  fig.height = 4,
+  fig.align = 'center',
+  knitr.table.format = "latex"
+)
+
+# Mask kable options to set global values
+kbl <- function(data, caption, col.names=names(data)) {
+  knitr::kable(data, booktabs = TRUE, digits = 3,caption = caption, col.names = col.names)
+}
 
 ```
 
 ## Sentry data
 
-This is a change analysis between files changed in commits of the project sentry by Apache. See <https://github.com/apache/sentry>.
+This is a change analysis between files changed in commits of the project sentry by Apache. See: <https://github.com/apache/sentry>.
 
-The data found looks like:
+The data generated looks like:
 
 ```{r sentry data}
-head(sentry_data)
+head(sentry_data) %>% 
+  kbl("Sentry distilled commits") %>% 
+  kable_styling() %>%
+  scroll_box(height = "300px")
 ```
 
-## Cochanges
+## Coupled changes
 
-The cochanges dataset looks like:
+Over the period defined from commit `r head(sentry_data, 1)$commit_1` to `r tail(sentry_data, 1)$commit_2` whenever a pair of entities (files/methods/classes) were changed in the same commit, the pair and the commit on was recorded.
 
-```{r cochanges}
-head(cochanges)
+The cochanges dataset, at the file level, looks like:
+
+```{r cochanges_file_level}
+head(cochanges_file_level) %>% 
+  kbl("Cochanges at file level") %>% 
+  kable_styling() %>%
+  scroll_box(height = "300px")
 ```
+
+The cochanges dataset, at the method level, looks like:
+
+```{r cochanges_method_level}
+head(cochanges_method_level) %>% 
+  kbl("Cochanges at method level") %>% 
+  kable_styling() %>%
+  scroll_box(height = "300px")
+```
+
+## Summary of data analyzed
+
+Here's a brief summary of the data analyzed
+
+### Types of changes
+
+The frequencies of the type of changes observed overall are:
+
+```{r type of changes, class.output="scroll-100"}
+
+count(sentry_data, change, sort = TRUE) %>% 
+  kbl("Frecuencies of type of changes") %>% 
+  kable_styling() %>%
+  scroll_box(height = "300px")
+
+```
+
+### Level of changes
+
+The frequencies of the level of the changes made overall are:
+
+```{r level of changes}
+
+ggplot(sentry_data, aes(x=change_level, fill=change_level)) + 
+  geom_bar(position="stack", stat="count") + 
+  geom_text(stat='count', aes(label=..count..), vjust=-1) +
+  scale_y_continuous(expand = c(0.2,0)) +
+  scale_fill_viridis(discrete = T) +
+  ggtitle("Levels of change", subtitle = "Apache's sentry codebase") + 
+  ylab("Occurrences") +
+  xlab("Level of change")
+
+```
+
+### Changes at the file level
+
+Using the change information that we have available, we counted each change per file over the commits. The following info describes the occurrences of changes per file observed overall:
+
+```{r summary of changes at file level}
+
+changes_per_file <- count(sentry_data, filename, sort = TRUE)
+
+changes_per_file %>%
+  skimr::skim(n) %>%
+  select(numeric.mean, numeric.sd, numeric.p0, numeric.p25, numeric.p50, numeric.p75, numeric.p100) %>%
+  kbl(caption="Descriptive statistics of changes at file level", 
+      col.names = c("mean","sd","p0","p25","p50","p75","p100")) %>%
+  kable_styling()
+
+```
+
+These can be visualized using a box plot:
+
+```{r boxplot of changes at file level}
+
+boxplot(changes_per_file$n, main = "Boxplot of number of changes at file level", ylab = "Number of changes")
+
+```
+
+The outliers being:
+
+``` {r outliers table at file level}
+
+changes_per_file[changes_per_file$n > boxplot.stats(changes_per_file$n)$stats[5] ,] %>% 
+  kbl(caption = "Table of outliers") %>% 
+  kable_styling() %>%
+  scroll_box(height = "300px")
+
+```
+
+### Changes at method/class/access level
+
+Using the method level information available, we counted the changes recorded per method. The following info describes the occurrences of changes per method/class/access observed overall:
+
+```{r summary of changes at method level}
+
+changes_per_method <- count(sentry_data, level_name, sort = TRUE)
+
+changes_per_method %>%
+  skimr::skim(n) %>%
+  select(numeric.mean, numeric.sd, numeric.p0, numeric.p25, numeric.p50, numeric.p75, numeric.p100) %>%
+  kbl(caption="Descriptive statistics of changes at method level", 
+      col.names = c("mean","sd","p0","p25","p50","p75","p100")) %>%
+  kable_styling()
+
+```
+
+These can be visualized using a box plot:
+
+```{r boxplot of changes at method level}
+
+boxplot(changes_per_method$n, main = "Boxplot of number of changes at method level", ylab = "Number of changes")
+
+```
+
+The outliers being:
+
+``` {r outliers table at method level}
+
+changes_per_method[changes_per_method$n > boxplot.stats(changes_per_method$n)$stats[5] ,] %>% 
+  kbl(caption = "Table of outliers") %>% 
+  kable_styling() %>%
+  scroll_box(height = "300px")
+
+```
+
+### Coupled changes
+
+Here we used the info we got from the coupled changes analysis.
+
+#### File level
+
+Using the cochange information available, we counted the changes recorded per file. The following info describes the occurrences of changes per file observed overall:
+
+```{r summary of cochanges at file level}
+
+cochanges_per_file <- count(cochanges_file_level, filename.x, sort = TRUE)[, c('filename.x', 'n')]
+
+cochanges_per_file[, c('filename.x', 'n')] %>%
+  skimr::skim(n) %>%
+  select(numeric.mean, numeric.sd, numeric.p0, numeric.p25, numeric.p50, numeric.p75, numeric.p100) %>%
+  kbl(caption="Descriptive statistics of cochanges at file level", 
+      col.names = c("mean","sd","p0","p25","p50","p75","p100")) %>%
+  kable_styling()
+
+```
+
+These can be visualized using a box plot:
+
+```{r boxplot of cochanges at file level}
+
+boxplot(cochanges_per_file$n, main = "Boxplot of number of cochanges at file level", ylab = "Number of cochanges")
+
+```
+
+The outliers being:
+
+``` {r outliers cochanges table at file level}
+
+cochanges_per_file[cochanges_per_file$n > boxplot.stats(cochanges_per_file$n)$stats[5] ,] %>% 
+  kbl(caption = "Table of outliers") %>% 
+  kable_styling() %>%
+  scroll_box(height = "300px")
+
+```
+
+#### Method level
+
+Using the cochange information available, we counted the changes recorded per method. The following info describes the occurrences of changes per method observed overall:
+
+```{r summary of cochanges at method level}
+
+cochanges_per_method <- count(cochanges_method_level, level_name.x, sort = TRUE)[, c('level_name.x', 'n')]
+
+cochanges_per_method[, c('level_name.x', 'n')] %>%
+  skimr::skim(n) %>%
+  select(numeric.mean, numeric.sd, numeric.p0, numeric.p25, numeric.p50, numeric.p75, numeric.p100) %>%
+  kbl(caption="Descriptive statistics of cochanges at method level", 
+      col.names = c("mean","sd","p0","p25","p50","p75","p100")) %>%
+  kable_styling()
+
+```
+
+These can be visualized using a box plot:
+
+```{r boxplot of cochanges at method level}
+
+boxplot(cochanges_per_method$n, main = "Boxplot of number of cochanges at method level", ylab = "Number of cochanges")
+
+```
+
+The outliers being:
+
+``` {r outliers cochanges table at method level}
+
+cochanges_per_method[cochanges_per_method$n > boxplot.stats(cochanges_per_method$n)$stats[5] ,] %>% 
+  kbl(caption = "Table of outliers") %>% 
+  kable_styling() %>%
+  scroll_box(height = "300px")
+
+```
+
+
 
