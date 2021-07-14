@@ -96,7 +96,7 @@ This is a change analysis between files changed in commits of the project sentry
 The data generated looks like:
 
 ```{r sentry data}
-head(sentry_data) %>% 
+head(sentry_data, n = 20L) %>% 
   kbl("Sentry distilled commits") %>% 
   kable_styling() %>%
   scroll_box(height = "300px")
@@ -109,7 +109,7 @@ Over the period defined from commit `r head(sentry_data, 1)$commit_1` to `r tail
 The cochanges dataset, at the file level, looks like:
 
 ```{r cochanges_file_level}
-head(cochanges_file_level) %>% 
+head(cochanges_file_level, n = 20L) %>% 
   kbl("Cochanges at file level") %>% 
   kable_styling() %>%
   scroll_box(height = "300px")
@@ -118,7 +118,7 @@ head(cochanges_file_level) %>%
 The cochanges dataset, at the method level, looks like:
 
 ```{r cochanges_method_level}
-head(cochanges_method_level) %>% 
+head(cochanges_method_level, n = 20L) %>% 
   kbl("Cochanges at method level") %>% 
   kable_styling() %>%
   scroll_box(height = "300px")
