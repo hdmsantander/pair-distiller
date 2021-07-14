@@ -1,5 +1,11 @@
 # README
 
+## GitHub Pages
+
+You can find some results of the project [here](https://hdmsantander.github.io/pair-distiller/)
+
+## pair-distiller
+
 To generate the _distill_results.csv file_, run _distill_script.sh_ as follows:
 
 ```BASH
