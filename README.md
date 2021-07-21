@@ -25,5 +25,9 @@ The script will invoke _Rscript_ to perform the knitting of the r-markdown file.
 - `library(readr)`
 - `library(dplyr)`
 - `library(tidyverse)`
+- `library(kableExtra)`
+- `library(ggplot2)`
+- `library(viridis)`
+- `library(funtimes)`
 
 The script also needs `pandoc` to be installed.

@@ -12,6 +12,7 @@ library(tidyverse)
 library(kableExtra)
 library(ggplot2)
 library(viridis)
+library(funtimes)
 
 # Load information and create RDA
 if (file.exists("sentry_data.Rda")) {
@@ -96,7 +97,7 @@ This is a change analysis between files changed in commits of the project sentry
 The data generated looks like:
 
 ```{r sentry data}
-head(sentry_data, n = 20L) %>% 
+head(sentry_data, n = 50L) %>% 
   kbl("Sentry distilled commits") %>% 
   kable_styling() %>%
   scroll_box(height = "300px")
@@ -106,14 +107,18 @@ head(sentry_data, n = 20L) %>%
 
 Over the period defined from commit `r head(sentry_data, 1)$commit_1` to `r tail(sentry_data, 1)$commit_2` whenever a pair of entities (files/methods/classes) were changed in the same commit, the pair and the commit on was recorded.
 
+
+### File level
 The cochanges dataset, at the file level, looks like:
 
 ```{r cochanges_file_level}
-head(cochanges_file_level, n = 20L) %>% 
+head(cochanges_file_level, n = 50L) %>% 
   kbl("Cochanges at file level") %>% 
   kable_styling() %>%
   scroll_box(height = "300px")
 ```
+
+### Method level
 
 The cochanges dataset, at the method level, looks like:
 
@@ -132,7 +137,7 @@ Here's a brief summary of the data analyzed
 
 The frequencies of the type of changes observed overall are:
 
-```{r type of changes, class.output="scroll-100"}
+```{r type of changes}
 
 count(sentry_data, change, sort = TRUE) %>% 
   kbl("Frecuencies of type of changes") %>% 
@@ -272,7 +277,7 @@ cochanges_per_file[cochanges_per_file$n > boxplot.stats(cochanges_per_file$n)$st
 
 #### Method level
 
-Using the cochange information available, we counted the changes recorded per method. The following info describes the occurrences of changes per method observed overall:
+Using the co-change information available, we counted the changes recorded per method. The following info describes the occurrences of changes per method observed overall:
 
 ```{r summary of cochanges at method level}
 
@@ -306,5 +311,148 @@ cochanges_per_method[cochanges_per_method$n > boxplot.stats(cochanges_per_method
 
 ```
 
+## Deeper analysis
 
+In order to get some insight over the data, the following information was researched:
+
+* Types of changes in the most frequently changed files
+* Types of changes in the most frequently co-changed files
+* Types of changes in the most frequently changed methods
+* Types of changes in the most frequently co-changed methods
+* Frequency of changes over time in frequently changed files
+* Frequency of changes over time in frequently co-changed files
+* Frequency of changes over time in frequently changed methods
+* Frequency of changes over time in frequently co-changed methods
+
+### Types of changes in the most frequently changed files
+
+We selected the 90 percentile most changed files and recorded the frequency of the types of changes recorded.
+
+```{r type of changes in frequently changed files}
+
+limit <- quantile(changes_per_file$n, probs = c(0.90))
+
+top_changes_file <- changes_per_file[changes_per_file$n > limit, ]$filename
+
+data_most_changed_files <- subset(sentry_data, filename %in% top_changes_file)
+
+count(data_most_changed_files, change, sort = TRUE) %>% 
+  kbl("Frecuencies of type of changes per files for top 90 percentile") %>% 
+  kable_styling() %>%
+  scroll_box(height = "300px")
+
+```
+
+
+### Types of changes in the most frequently co-changed files
+
+We selected the 90 percentile most co-changed files and recorded the frequency of the types of changes recorded.
+
+```{r type of changes in frequently co-changed files}
+
+limit <- quantile(cochanges_per_file$n, probs = c(0.90))
+
+top_cochanges_file <- cochanges_per_file[cochanges_per_file$n > limit, ]$filename.x
+
+data_most_cochanged_files <- subset(sentry_data, filename %in% top_cochanges_file)
+
+count(data_most_cochanged_files, change, sort = TRUE) %>% 
+  kbl("Frecuencies of type of cochanges per files for top 90 percentile") %>% 
+  kable_styling() %>%
+  scroll_box(height = "300px")
+
+```
+
+### Types of changes in the most frequently changed methods
+
+We selected the 90 percentile most changed methods and recorded the frequency of the types of changes recorded.
+
+```{r type of changes in frequently changed methods}
+
+limit <- quantile(changes_per_method$n, probs = c(0.90))
+
+top_changes_method <- changes_per_method[changes_per_method$n > limit, ]$level_name
+
+data_most_changed_methods <- subset(sentry_data, level_name %in% top_changes_method)
+
+count(data_most_changed_methods, change, sort = TRUE) %>% 
+  kbl("Frecuencies of type of changes per method for top 90 percentile") %>% 
+  kable_styling() %>%
+  scroll_box(height = "300px")
+
+```
+
+
+### Types of changes in the most frequently co-changed methods
+
+We selected the 90 percentile most co-changed methods and recorded the frequency of the types of changes recorded.
+
+```{r type of changes in frequently co-changed methods}
+
+limit <- quantile(cochanges_per_method$n, probs = c(0.90))
+
+top_cochanges_method <- cochanges_per_method[cochanges_per_method$n > limit, ]$level_name.x
+
+data_most_cochanged_methods <- subset(sentry_data, level_name %in% top_cochanges_method)
+
+count(data_most_cochanged_methods, change, sort = TRUE) %>% 
+  kbl("Frecuencies of type of cochanges per method for top 90 percentile") %>% 
+  kable_styling() %>%
+  scroll_box(height = "300px")
+
+```
+
+### Frequency of changes over time in frequently changed files
+
+Tracking the number of changes over time for the most changed files and found the following trends:
+
+```{r frequency of changes over time in most changed files}
+
+temp <- count(data_most_changed_files, filename, commit_2)
+
+ggplot(temp, aes(x = commit_2, y = n, group = filename)) +
+  geom_line()
+
+```
+
+Removing the series which don't show a trend we have:
+
+
+
+### Frequency of changes over time in frequently co-changed files
+
+Tracking the number of changes over time for the most changed methods we found the following trends
+
+```{r frequency of changes over time in most co-changed files}
+
+temp <- count(data_most_cochanged_files, filename, commit_2)
+
+ggplot(temp, aes(x = commit_2, y = n, group = filename)) +
+  geom_line()
+
+```
+
+
+### Frequency of changes over time in frequently changed methods
+
+```{r frequency of changes over time in most changed methods}
+
+temp <- count(data_most_changed_methods, level_name, commit_2)
+
+ggplot(temp, aes(x = commit_2, y = n, group = level_name)) +
+  geom_line()
+
+```
+
+
+### Frequency of changes over time in frequently co-changed methods
+
+```{r frequency of changes over time in most co-changed methods}
+
+temp <- count(data_most_cochanged_methods, level_name, commit_2)
+
+ggplot(temp, aes(x = commit_2, y = n, group = level_name)) +
+  geom_line()
+
+```
 
